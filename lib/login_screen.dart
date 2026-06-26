@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 1. Add this import
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,11 +14,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _auth = FirebaseAuth.instance;
+  final _db = FirebaseFirestore.instance; // 2. Initialize Firestore instance
 
-  bool _isLoginMode = true; // Toggles between Login and Registration
+  bool _isLoginMode = true; 
   bool _isLoading = false;
 
-  // Function to show error dialogs
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -34,12 +35,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Handle Firebase Login or Registration
   Future<void> _submitAuth() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    // Basic Validation
     if (email.isEmpty || !email.contains('@')) {
       _showErrorDialog('Please enter a valid email address.');
       return;
@@ -55,6 +54,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       UserCredential userCredential;
+      String role = 'student'; // Default role
+
+      // Determine tentative role for demonstration/routing
+      if (email.endsWith('@g.bracu.ac.bd')) {
+        role = 'admin';
+      }
       
       if (_isLoginMode) {
         // 🔐 Log In Existing User
@@ -62,23 +67,32 @@ class _LoginScreenState extends State<LoginScreen> {
           email: email,
           password: password,
         );
+
+        // Fetch their real assigned role straight from the database!
+        final userDoc = await _db.collection('users').doc(userCredential.user!.uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          role = userDoc.data()!['role'] ?? 'student';
+        }
+
       } else {
         // 📝 Register New User
         userCredential = await _auth.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
+
+        // 🗄️ Save profile details into the Cloud Firestore Database
+        await _db.collection('users').doc(userCredential.user!.uid).set({
+          'uid': userCredential.user!.uid,
+          'email': email,
+          'role': role, // Saves 'admin' if BRACU mail ends with @g.bracu.ac.bd, else 'student'
+          'createdAt': Timestamp.now(),
+        });
       }
 
       if (!mounted) return;
 
-      // Determine role based on email domain (Simple logic for now)
-      String role = 'student';
-      if (email.endsWith('@g.bracu.ac.bd')) {
-        role = 'admin';
-      }
-
-      // Navigate to Home Screen on Success
+      // Navigate to Home Screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -102,7 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Quick Bypass for testing presentation
   void _bypassLogin(String role, String email) {
     Navigator.pushReplacement(
       context,
@@ -120,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.amber[100],
       body: Center(
@@ -133,11 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               const Text(
                 'BRACU-CART',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.brown,
-                ),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.brown),
               ),
               Text(
                 _isLoginMode ? 'Your Campus Marketplace' : 'Create Student Account',
@@ -145,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
               
-              // Email Field
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -159,7 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Password Field
               TextField(
                 controller: _passwordController,
                 obscureText: true,
@@ -173,7 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Auth Submit Button
               _isLoading
                   ? const CircularProgressIndicator()
                   : SizedBox(
@@ -192,7 +198,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
               
-              // Toggle between Login & Register mode
               TextButton(
                 onPressed: () {
                   setState(() {
@@ -209,7 +214,6 @@ class _LoginScreenState extends State<LoginScreen> {
               
               const Divider(height: 40, thickness: 1),
               
-              // Demo Bypass section
               const Text(
                 '⚡ DEMO BYPASS OPTIONS',
                 style: TextStyle(color: Colors.brown, fontWeight: FontWeight.bold),
