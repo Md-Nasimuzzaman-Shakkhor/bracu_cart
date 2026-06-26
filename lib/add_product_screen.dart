@@ -41,6 +41,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Other'
   ];
 
+  // SMART UTILITY FUNCTION: Converts "first.last@g.bracu.ac.bd" -> "First Last"
+  String _extractNameFromEmail(String email) {
+    try {
+      String username = email.split('@').first;
+      List<String> parts = username.split('.').map((part) {
+        if (part.isEmpty) return '';
+        return part[0].toUpperCase() + part.substring(1).toLowerCase();
+      }).toList();
+      return parts.join(' ').trim();
+    } catch (e) {
+      return 'BRACU Student'; // Safe fallback standard
+    }
+  }
+
   Future<void> _pickProductImage() async {
     final base64Str = await ImageHelper.pickAndCompressImage();
     if (base64Str != null) {
@@ -66,20 +80,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
+      final String email = user?.email ?? '';
       
+      // Compute the premium formatted string right here on the fly!
+      final String calculatedName = email.isNotEmpty 
+          ? _extractNameFromEmail(email) 
+          : 'BRACU Student';
+
       final Map<String, dynamic> postData = {
         'postType': _postType,
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'category': _postType == 'Resource' ? 'Resources' : _selectedCategory,
         'sellerId': user?.uid,
-        'sellerEmail': user?.email,
+        'sellerEmail': email,
+        // SAVING: Now securely pushed as the official calculated student name string
+        'sellerName': calculatedName,
         'isSold': false, 
-        'isReported': false, // Tracked for your Admin system MVP
+        'isReported': false,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      // Add specialized payload structures per your vision specs
       if (_postType == 'Sell') {
         postData['price'] = double.parse(_priceController.text.trim());
         postData['whatsapp'] = _whatsappController.text.trim();
@@ -136,7 +157,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Toggle Tabs
                     Row(
                       children: [
                         Expanded(
@@ -158,7 +178,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Photo selector panel for Sell listings
                     if (_postType == 'Sell') ...[
                       GestureDetector(
                         onTap: _pickProductImage,
@@ -190,7 +209,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       const SizedBox(height: 16),
                     ],
 
-                    // Input Fields matching Resource vs Sell profiles
                     if (_postType == 'Resource') ...[
                       TextFormField(
                         controller: _courseCodeController,

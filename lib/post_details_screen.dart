@@ -83,6 +83,9 @@ class PostDetailsScreen extends StatelessWidget {
     final String? postCreatorId = data['sellerId']; 
     final bool isOwner = (currentUserId != null && currentUserId == postCreatorId);
 
+    // FIX: Read name dynamically with safe fallback string logic
+    final String sellerName = data['sellerName'] ?? 'BRACU Student';
+
     return Scaffold(
       appBar: AppBar(title: Text(postType == 'Sell' ? 'Item Details' : 'Resource Details')),
       body: SingleChildScrollView(
@@ -133,6 +136,40 @@ class PostDetailsScreen extends StatelessWidget {
               Text('${data['price'] ?? 0} BDT', style: const TextStyle(fontSize: 20, color: Colors.green, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
             ],
+
+            // FIX: Premium Trust profile widget block added smoothly
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
+                    child: const Icon(Icons.person, color: Color(0xFF1E3A8A)),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sellerName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Verified BRACU Student Seller',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
             const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 4),

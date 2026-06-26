@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'add_product_screen.dart';
 import 'login_screen.dart';
 import 'post_details_screen.dart';
+import 'my_listings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -84,9 +85,15 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: const Icon(Icons.history, color: Colors.grey),
-              title: const Text('My Listings'),
-              onTap: () {},
+              leading: const Icon(Icons.history, color: Color(0xFF1E3A8A)),
+              title: const Text('My Listings', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(context); // Closes the drawer smoothly
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyListingsScreen()),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.bookmark_border, color: Colors.grey),
@@ -150,30 +157,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(right: 8.0),
                         child: ChoiceChip(
                           label: Text(
-    catName,
-    style: TextStyle(
-      // Selected text is white, unselected text is a readable dark blue/gray
-      color: isSelected ? Colors.white : const Color(0xFF1E3A8A),
-      fontSize: 12,
-      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-    ),
-  ),
-  selected: isSelected,
-  selectedColor: Colors.orange[700], // Premium bright orange when selected
-  // Unselected background is now a soft gray-blue so dark text pops out
-  backgroundColor: Colors.grey[200],
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(20),
-    side: BorderSide(
-      color: isSelected ? Colors.transparent : Colors.grey[300]!,
-    ),
-  ),
-  onSelected: (bool selected) {
-    setState(() {
-      _selectedCategory = catName;
-    });
-  },
-),
+                            catName,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : const Color(0xFF1E3A8A),
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: Colors.orange[700], // Premium bright orange when selected
+                          backgroundColor: Colors.grey[200],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected ? Colors.transparent : Colors.grey[300]!,
+                            ),
+                          ),
+                          onSelected: (bool selected) {
+                            setState(() {
+                              _selectedCategory = catName;
+                            });
+                          },
+                        ),
                       );
                     },
                   ),
