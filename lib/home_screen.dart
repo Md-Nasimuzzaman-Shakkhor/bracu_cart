@@ -90,9 +90,10 @@ class HomeScreen extends StatelessWidget {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // MILESTONE UPDATED: Pulling all posts (both available and sold) ordered by newest first
               stream: FirebaseFirestore.instance
                   .collection('products')
-                  .where('isSold', isEqualTo: false)
+                  .orderBy('createdAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -131,12 +132,12 @@ class HomeScreen extends StatelessWidget {
                     final String desc = data['description'] ?? '';
                     final String? imageBase64 = data['imageBase64'];
                     final double price = (data['price'] ?? 0.0).toDouble();
+                    final bool isSold = data['isSold'] ?? false; // Track sold state flags
 
                     return InkWell(
                       onTap: () {
-                        // Create a map copy to insert the document ID safely without breaking local states
                         final Map<String, dynamic> dataPayload = Map<String, dynamic>.from(data);
-                        dataPayload['id'] = docs[index].id; // Injecting the Firestore Document ID
+                        dataPayload['id'] = docs[index].id;
 
                         Navigator.push(
                           context,
@@ -164,6 +165,7 @@ class HomeScreen extends StatelessWidget {
                             Expanded(
                               child: Stack(
                                 children: [
+                                  // Base Product Image
                                   Container(
                                     width: double.infinity,
                                     color: Colors.grey[200],
@@ -171,6 +173,8 @@ class HomeScreen extends StatelessWidget {
                                         ? Image.memory(base64Decode(imageBase64), fit: BoxFit.cover)
                                         : const Icon(Icons.image, color: Colors.grey, size: 40),
                                   ),
+                                  
+                                  // Type Badge (Sell / Resource)
                                   Positioned(
                                     top: 8,
                                     left: 8,
@@ -186,6 +190,30 @@ class HomeScreen extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+
+                                  // VISUAL EXTRA: Translucent Solid Dark Overlay + Premium Centered "SOLD" Stamp
+                                  if (isSold)
+                                    Container(
+                                      color: Colors.black.withOpacity(0.55),
+                                      alignment: Alignment.center,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.redAccent, width: 2.5),
+                                          borderRadius: BorderRadius.circular(6),
+                                          color: Colors.black.withOpacity(0.4),
+                                        ),
+                                        child: const Text(
+                                          'SOLD',
+                                          style: TextStyle(
+                                            color: Colors.redAccent,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 16,
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -196,7 +224,13 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     title,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold, 
+                                      fontSize: 14,
+                                      // Slightly dim text if the item is gone
+                                      color: isSold ? Colors.grey[500] : Colors.black,
+                                      decoration: isSold ? TextDecoration.lineThrough : null,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -211,9 +245,12 @@ class HomeScreen extends StatelessWidget {
                                   Text(
                                     postType == 'Resource' ? 'FREE' : '${price.toStringAsFixed(0)} BDT',
                                     style: TextStyle(
-                                      color: postType == 'Resource' ? Colors.blue[800] : Colors.green[700],
+                                      color: isSold 
+                                          ? Colors.grey[400] 
+                                          : (postType == 'Resource' ? Colors.blue[800] : Colors.green[700]),
                                       fontWeight: FontWeight.w900,
                                       fontSize: 14,
+                                      decoration: isSold ? TextDecoration.lineThrough : null,
                                     ),
                                   ),
                                 ],
