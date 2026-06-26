@@ -92,16 +92,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // Navigate to Home Screen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(
-            userRole: role,
-            userEmail: userCredential.user?.email ?? email,
-          ),
-        ),
-      );
+// Change that block to just this clean layout:
+Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (context) => const HomeScreen(),
+  ),
+);
 
     } on FirebaseAuthException catch (e) {
       _showErrorDialog(e.message ?? 'Authentication failed.');
@@ -116,14 +113,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _bypassLogin(String role, String email) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomeScreen(userRole: role, userEmail: email),
-      ),
-    );
-  }
+void _bypassLogin(String role, String email) {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const HomeScreen(),
+    ),
+  );
+}
 
   @override
   void dispose() {
