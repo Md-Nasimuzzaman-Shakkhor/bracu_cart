@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "328362817116",
+    "project_id": "bracu-cart",
+    "storage_bucket": "bracu-cart.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:328362817116:android:6e9a6ff93c8b3304895899",
+        "android_client_info": {
+          "package_name": "com.example.bracu_cart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzuhoWmNEO81i9a_u-z8kM120CiwR8rPs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

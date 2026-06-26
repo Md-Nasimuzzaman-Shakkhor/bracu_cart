@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart'; // Import the new login screen
+import 'package:firebase_core/firebase_core.dart'; // Add this import
+import 'firebase_options.dart'; // Add this import
+import 'login_screen.dart';
 
-void main() {
+void main() async {
+  // Ensures all native Android bindings are loaded before initializing Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initializes Firebase using the auto-generated options file
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const BracuCartApp());
 }
 
