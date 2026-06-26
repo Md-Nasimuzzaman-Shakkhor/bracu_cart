@@ -134,10 +134,14 @@ class HomeScreen extends StatelessWidget {
 
                     return InkWell(
                       onTap: () {
+                        // Create a map copy to insert the document ID safely without breaking local states
+                        final Map<String, dynamic> dataPayload = Map<String, dynamic>.from(data);
+                        dataPayload['id'] = docs[index].id; // Injecting the Firestore Document ID
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PostDetailsScreen(data: data),
+                            builder: (context) => PostDetailsScreen(data: dataPayload),
                           ),
                         );
                       },

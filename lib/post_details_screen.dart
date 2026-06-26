@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PostDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> data;
 
   const PostDetailsScreen({super.key, required this.data});
 
-  // The Product Owner magic: Launching WhatsApp directly saves weeks of chat dev time!
   void _launchWhatsApp(BuildContext context, String number, String itemTitle) async {
-    // Clean up the number layout safely
     String cleanNumber = number.replaceAll(RegExp(r'[^\d+]'), '');
     if (!cleanNumber.startsWith('+')) {
       cleanNumber = '+880${cleanNumber.substring(cleanNumber.length - 10)}'; 
@@ -29,12 +29,59 @@ class PostDetailsScreen extends StatelessWidget {
     }
   }
 
+  // Updates item status to true in Firestore collection
+  void _markAsSold(BuildContext context, String? docId) async {
+    if (docId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Could not trace document ID reference.')),
+      );
+      return;
+    }
+    try {
+      await FirebaseFirestore.instance.collection('products').doc(docId).update({
+        'isSold': true,
+      });
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item successfully marked as Sold!')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      debugPrint("Error marking as sold: $e");
+    }
+  }
+
+  // Permanently removes listing out of Firestore backend safely
+  void _deletePost(BuildContext context, String? docId) async {
+    if (docId == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('products').doc(docId).delete();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Listing deleted successfully.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      debugPrint("Error deleting post: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String postType = data['postType'] ?? 'Sell';
     final String title = data['title'] ?? 'No Title';
     final String desc = data['description'] ?? 'No Description';
     final String? imageBase64 = data['imageBase64'];
+    
+    // Grabs unique document record path index ID
+    final String? docId = data['id']; 
+
+    // Ownership Verification logic
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final String? postCreatorId = data['sellerId']; 
+    final bool isOwner = (currentUserId != null && currentUserId == postCreatorId);
 
     return Scaffold(
       appBar: AppBar(title: Text(postType == 'Sell' ? 'Item Details' : 'Resource Details')),
@@ -64,15 +111,14 @@ class PostDetailsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Line 67 fix inside lib/post_details_screen.dart
-Text(
-  'Course Code: ${data['courseCode'] ?? ''}', 
-  style: const TextStyle(
-    fontWeight: FontWeight.bold, 
-    fontSize: 16, 
-    color: Colors.blue, // Fixed here!
-  ),
-),
+                    Text(
+                      'Course Code: ${data['courseCode'] ?? ''}', 
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 16, 
+                        color: Colors.blue,
+                      ),
+                    ),
                     Text('Course Name: ${data['courseName'] ?? ''}', style: const TextStyle(fontSize: 14)),
                   ],
                 ),
@@ -93,24 +139,62 @@ Text(
             Text(desc, style: const TextStyle(fontSize: 15, color: Colors.black87)),
             const SizedBox(height: 32),
 
-            // Contextual Action Buttons based on your Vision Strategy
-            if (postType == 'Sell') ...[
-              ElevatedButton.icon(
-                onPressed: () => _launchWhatsApp(context, data['whatsapp'] ?? '', title),
-                icon: const Icon(Icons.phone),
-                label: const Text('Contact Seller via WhatsApp', style: TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 16)),
-              ),
-            ] else ...[
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final Uri url = Uri.parse(data['url'] ?? '');
-                  if (await canLaunchUrl(url)) await launchUrl(url);
+            // OWNER MANAGEMENT TOOLS (Visible only if current student uploaded this listing)
+            if (isOwner) ...[
+              if (postType == 'Sell') ...[
+                ElevatedButton.icon(
+                  onPressed: () => _markAsSold(context, docId),
+                  icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                  label: const Text('Mark as Sold', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800], padding: const EdgeInsets.symmetric(vertical: 14)),
+                ),
+                const SizedBox(height: 12),
+              ],
+              OutlinedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete Listing permanently?'),
+                      content: const Text('Are you sure you want to delete this listing from BRACU-CART? This step cannot be undone.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _deletePost(context, docId);
+                          },
+                          child: const Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
                 },
-                icon: const Icon(Icons.download),
-                label: const Text('Open Resource URL Link', style: TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
+                icon: const Icon(Icons.delete_forever, color: Colors.red),
+                label: const Text('Delete Listing', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
+            ] 
+            // BUYER ENGAGEMENT CONTROLS (Visible to everyone else checking out the item)
+            else ...[
+              if (postType == 'Sell') ...[
+                ElevatedButton.icon(
+                  onPressed: () => _launchWhatsApp(context, data['whatsapp'] ?? '', title),
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Contact Seller via WhatsApp', style: TextStyle(fontSize: 16)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 16)),
+                ),
+              ] else ...[
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final Uri url = Uri.parse(data['url'] ?? '');
+                    if (await canLaunchUrl(url)) await launchUrl(url);
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Open Resource URL Link', style: TextStyle(fontSize: 16)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
+                ),
+              ],
             ],
           ],
         ),
