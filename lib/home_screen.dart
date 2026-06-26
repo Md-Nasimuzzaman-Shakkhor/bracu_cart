@@ -6,12 +6,32 @@ import 'add_product_screen.dart';
 import 'login_screen.dart';
 import 'post_details_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Search & Filter State Management
+  String _searchQuery = "";
+  String _selectedCategory = "All";
+
+  // List of matching categories from your AddProductScreen
+  final List<String> _categories = [
+    'All',
+    'Books',
+    'Electronics',
+    'Food',
+    'Resources',
+    'Business',
+    'Other'
+  ];
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
+    if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -88,9 +108,83 @@ class HomeScreen extends StatelessWidget {
       // 3. Main Screen Layout Matrix
       body: Column(
         children: [
+          // SUB-PANEL: Live Search bar and dynamic category filter row
+          Container(
+            color: const Color(0xFF1E3A8A), // Blend with deep navy appBar
+            padding: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
+            child: Column(
+              children: [
+                // Clean Search Bar Input layout
+                TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Search products or course codes...',
+                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    fillColor: Colors.white,
+                    filled: true,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Horizontal scrolling choice chips matrix
+                SizedBox(
+                  height: 36,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    itemBuilder: (context, idx) {
+                      final catName = _categories[idx];
+                      final isSelected = _selectedCategory == catName;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(
+    catName,
+    style: TextStyle(
+      // Selected text is white, unselected text is a readable dark blue/gray
+      color: isSelected ? Colors.white : const Color(0xFF1E3A8A),
+      fontSize: 12,
+      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    ),
+  ),
+  selected: isSelected,
+  selectedColor: Colors.orange[700], // Premium bright orange when selected
+  // Unselected background is now a soft gray-blue so dark text pops out
+  backgroundColor: Colors.grey[200],
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(20),
+    side: BorderSide(
+      color: isSelected ? Colors.transparent : Colors.grey[300]!,
+    ),
+  ),
+  onSelected: (bool selected) {
+    setState(() {
+      _selectedCategory = catName;
+    });
+  },
+),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Main Feed Grid Area
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              // MILESTONE UPDATED: Pulling all posts (both available and sold) ordered by newest first
               stream: FirebaseFirestore.instance
                   .collection('products')
                   .orderBy('createdAt', descending: true)
@@ -103,12 +197,32 @@ class HomeScreen extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator(color: Color(0xFF1E3A8A)));
                 }
 
-                final docs = snapshot.data?.docs ?? [];
+                final rawDocs = snapshot.data?.docs ?? [];
+
+                // CLIENT SIDE FILTERING LOGIC Matrix
+                final docs = rawDocs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  
+                  final String title = (data['title'] ?? '').toString().toLowerCase();
+                  final String desc = (data['description'] ?? '').toString().toLowerCase();
+                  final String category = (data['category'] ?? 'Other').toString();
+                  final String courseCode = (data['courseCode'] ?? '').toString().toLowerCase();
+
+                  // Match Category filter check
+                  bool matchesCategory = (_selectedCategory == "All" || category == _selectedCategory);
+
+                  // Match Search Query check (Checks title, description, and course codes!)
+                  bool matchesSearch = title.contains(_searchQuery) || 
+                                       desc.contains(_searchQuery) || 
+                                       courseCode.contains(_searchQuery);
+
+                  return matchesCategory && matchesSearch;
+                }).toList();
 
                 if (docs.isEmpty) {
                   return const Center(
                     child: Text(
-                      'No active listings found.\nTap Sell / Share to list something!',
+                      'No matching results found.\nTry a different search or filter category!',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, fontSize: 15),
                     ),
@@ -132,7 +246,7 @@ class HomeScreen extends StatelessWidget {
                     final String desc = data['description'] ?? '';
                     final String? imageBase64 = data['imageBase64'];
                     final double price = (data['price'] ?? 0.0).toDouble();
-                    final bool isSold = data['isSold'] ?? false; // Track sold state flags
+                    final bool isSold = data['isSold'] ?? false;
 
                     return InkWell(
                       onTap: () {
@@ -165,7 +279,6 @@ class HomeScreen extends StatelessWidget {
                             Expanded(
                               child: Stack(
                                 children: [
-                                  // Base Product Image
                                   Container(
                                     width: double.infinity,
                                     color: Colors.grey[200],
@@ -173,8 +286,6 @@ class HomeScreen extends StatelessWidget {
                                         ? Image.memory(base64Decode(imageBase64), fit: BoxFit.cover)
                                         : const Icon(Icons.image, color: Colors.grey, size: 40),
                                   ),
-                                  
-                                  // Type Badge (Sell / Resource)
                                   Positioned(
                                     top: 8,
                                     left: 8,
@@ -190,8 +301,6 @@ class HomeScreen extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-
-                                  // VISUAL EXTRA: Translucent Solid Dark Overlay + Premium Centered "SOLD" Stamp
                                   if (isSold)
                                     Container(
                                       color: Colors.black.withOpacity(0.55),
@@ -227,7 +336,6 @@ class HomeScreen extends StatelessWidget {
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold, 
                                       fontSize: 14,
-                                      // Slightly dim text if the item is gone
                                       color: isSold ? Colors.grey[500] : Colors.black,
                                       decoration: isSold ? TextDecoration.lineThrough : null,
                                     ),
