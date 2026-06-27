@@ -256,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Text('📈 Total Listings: $totalItems', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 13)),
-                      Text('✅ Marked Sold: $soldItems', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32), fontSize: 13)), // 0xFF2E7D32 is the hex code for green[800]
+                      Text('✅ Marked Sold: $soldItems', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32), fontSize: 13)), 
                     ],
                   ),
                 );
@@ -412,18 +412,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ),
-                                // Floating Post Type Tag layout label
+                                // ✅ UPDATED DESIGN: Changes badge dynamically if the item is sold
                                 Positioned(
                                   top: 8,
                                   left: 8,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: postType == 'Resource' ? Colors.blue : Colors.green,
+                                      color: isSold 
+                                          ? Colors.blueGrey[600] 
+                                          : (postType == 'Resource' ? Colors.blue : Colors.green),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      postType,
+                                      isSold ? 'SOLD OUT' : postType,
                                       style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                     ),
                                   ),
